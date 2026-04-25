@@ -85,7 +85,12 @@ int main(int argc, char** argv) {
     const int smallHeight = 250;
     const int mainWidth = 500;
     const int mainHeight = smallHeight * 2;
-    const int margin = 8;
+    const int screenWidth = 1366;
+    const int screenHeight = 768;
+    const int totalWidth = smallWidth + mainWidth;
+    const int totalHeight = mainHeight;
+    const int layoutX = (screenWidth - totalWidth) / 2;
+    const int layoutY = (screenHeight - totalHeight) / 2;
 
     win w1(smallWidth, smallHeight);
     win w2(smallWidth, smallHeight);
@@ -95,9 +100,9 @@ int main(int argc, char** argv) {
     w2.title("y(t) for system 1.10 b");
     w.title("Phase portrait (x,y), system 1.10 b");
 
-    w1.position(margin, margin);
-    w2.position(margin, margin + smallHeight);
-    w.position(margin + smallWidth, margin);
+    w1.position(layoutX, layoutY);
+    w2.position(layoutX, layoutY + smallHeight);
+    w.position(layoutX + smallWidth, layoutY);
 
     w.scale(-4, 4, -4, 4);
     w1.scale(0, 5, -4, 4);
