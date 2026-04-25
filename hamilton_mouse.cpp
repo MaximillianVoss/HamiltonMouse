@@ -21,7 +21,8 @@ matrix systemB(double t, const matrix& X) {
     matrix R(2);
     const double x = X(0);
     const double y = X(1);
-
+    //dx / dt = x ^ 2 + y ^ 2 - 2x
+    //dy / dt = 3x ^ 2 - x + 3y
     R(0) = x * x + y * y - 2 * x;
     R(1) = 3 * x * x - x + 3 * y;
     return R;
@@ -36,10 +37,14 @@ Linearization2D linearizeSystemBAtZero() {
     L.a12 = 0;
     L.a21 = -1;
     L.a22 = 3;
-
+    //Trace / след матрицы 
+    //—лед Ч это сумма элементов главной диагонали
     L.trace = L.a11 + L.a22;
+    //Determinant / определитель
     L.determinant = L.a11 * L.a22 - L.a12 * L.a21;
+    //Discriminant / дискриминант
     L.discriminant = L.trace * L.trace - 4 * L.determinant;
+    //—обственные значени€ матрицы 2x2
     L.lambda1 = (L.trace - sqrt(L.discriminant)) / 2;
     L.lambda2 = (L.trace + sqrt(L.discriminant)) / 2;
     return L;
