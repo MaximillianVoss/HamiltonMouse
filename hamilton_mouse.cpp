@@ -3,35 +3,89 @@
 #include "matrix.h" 
 #include "win.h"   
 
-double F(double x, double y) {
-    return -((x - 1) * (x - 1) + y * y - 1) * ((x + 1) * (x + 1) + y * y - 1);
-}
+using namespace std;
 
-matrix G(double t, const matrix& X) { // Gradient
+struct Linearization2D {
+    double a11;
+    double a12;
+    double a21;
+    double a22;
+    double trace;
+    double determinant;
+    double discriminant;
+    double lambda1;
+    double lambda2;
+};
+
+matrix systemB(double t, const matrix& X) {
     matrix R(2);
-    const double h_diff = 0.001;
-    R(1) = (F(X(0) + h_diff, X(1)) - F(X(0) - h_diff, X(1))) / (2 * h_diff);
-    R(0) = (F(X(0), X(1) + h_diff) - F(X(0), X(1) - h_diff)) / (2 * h_diff);
+    const double x = X(0);
+    const double y = X(1);
+
+    R(0) = x * x + y * y - 2 * x;
+    R(1) = 3 * x * x - x + 3 * y;
     return R;
 }
 
-matrix H(double t, const matrix& X) { // Hamiltonian
-    matrix R(2);
-    const double h_diff = 0.001;
-    R(0) = (F(X(0), X(1) + h_diff) - F(X(0), X(1) - h_diff)) / (2 * h_diff);
-    R(1) = -(F(X(0) + h_diff, X(1)) - F(X(0) - h_diff, X(1))) / (2 * h_diff);
-    return R;
+Linearization2D linearizeSystemBAtZero() {
+    Linearization2D L;
+
+    // J(x,y) = [ 2x - 2   2y ]
+    //          [ 6x - 1    3 ]
+    L.a11 = -2;
+    L.a12 = 0;
+    L.a21 = -1;
+    L.a22 = 3;
+
+    L.trace = L.a11 + L.a22;
+    L.determinant = L.a11 * L.a22 - L.a12 * L.a21;
+    L.discriminant = L.trace * L.trace - 4 * L.determinant;
+    L.lambda1 = (L.trace - sqrt(L.discriminant)) / 2;
+    L.lambda2 = (L.trace + sqrt(L.discriminant)) / 2;
+    return L;
+}
+
+void printSystemBAnalysis() {
+    const Linearization2D L = linearizeSystemBAtZero();
+
+    cout << "Task 1.10 b" << endl;
+    cout << "dx/dt = x^2 + y^2 - 2x" << endl;
+    cout << "dy/dt = 3x^2 - x + 3y" << endl << endl;
+
+    cout << "The zero point is stationary: f(0,0)=0, g(0,0)=0." << endl;
+    cout << "Jacobian at (0,0):" << endl;
+    cout << "[ " << L.a11 << "  " << L.a12 << " ]" << endl;
+    cout << "[ " << L.a21 << "   " << L.a22 << " ]" << endl << endl;
+
+    cout << "Linearized system:" << endl;
+    cout << "dx/dt = -2x" << endl;
+    cout << "dy/dt = -x + 3y" << endl << endl;
+
+    cout << "trace = " << L.trace << endl;
+    cout << "determinant = " << L.determinant << endl;
+    cout << "discriminant = " << L.discriminant << endl;
+    cout << "lambda1 = " << L.lambda1 << endl;
+    cout << "lambda2 = " << L.lambda2 << endl << endl;
+
+    cout << "Stability type: saddle, unstable." << endl << endl;
+    cout << "Windows:" << endl;
+    cout << "1) large window: phase trajectory (x,y)" << endl;
+    cout << "2) small window: x(t)" << endl;
+    cout << "3) small window: y(t)" << endl << endl;
+    cout << "Click in the large window to choose the initial point." << endl;
 }
 
 int main(int argc, char** argv) {
+    printSystemBAnalysis();
+
     initdraw();
     al_install_mouse();
     win w(500, 500);
     win w1(250, 250);
     win w2(250, 250);
-    w.scale(-3, 3, -3, 3);
-    w1.scale(0, 1, -3, 3);
-    w2.scale(0, 1, -3, 3);
+    w.scale(-4, 4, -4, 4);
+    w1.scale(0, 5, -4, 4);
+    w2.scale(0, 5, -4, 4);
     w.clear();
     w.flip();
     w1.clear();
@@ -50,23 +104,21 @@ int main(int argc, char** argv) {
         al_wait_for_event(queue, &ev);
 
             if (ev.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN) {
-            double mx, my, x = 0, h = 0.001, d = 0.01;
+            double mx, my, t = 0, h = 0.001;
             w.inv_scale(ev.mouse.x, ev.mouse.y, mx, my);
-            //cout << mx << ' ' << my << endl;
     
             Y(0) = mx; Y(1) = my;
 
-            cout << F(Y(0), Y(1)) << ' ';
+            cout << "Initial point: x=" << Y(0) << ", y=" << Y(1) << endl;
 
-            while (x < 100.0) {
-                //merson(Y, x, h, 2.0, d, G);
-                rk(Y, x, h, G);
+            while (t < 5.0 && abs(Y(0)) < 4.0 && abs(Y(1)) < 4.0) {
+                rk(Y, t, h, systemB);
                 w.point(Y(0), Y(1));
-                w1.point(x, Y(0));
-                w2.point(x, Y(1));
-                //w.flip();
+                w1.point(t, Y(0));
+                w2.point(t, Y(1));
             }
-            cout << F(Y(0), Y(1)) << endl;
+
+            cout << "Final point: x=" << Y(0) << ", y=" << Y(1) << ", t=" << t << endl;
             w.flip();
             w1.flip();
             w2.flip();
