@@ -19,6 +19,8 @@ class win {
 public:
     win(int asize, int osize);
     ~win(void);
+    ALLEGRO_DISPLAY* display(void) const;
+    ALLEGRO_EVENT_SOURCE* event_source(void) const;
     void title(const char* text);
     void position(int x, int y);
     void clear(void);

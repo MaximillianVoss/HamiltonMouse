@@ -31,6 +31,14 @@ win::~win(void) {
     if (disp) al_destroy_display(disp);
 }
 
+ALLEGRO_DISPLAY* win::display(void) const {
+    return disp;
+}
+
+ALLEGRO_EVENT_SOURCE* win::event_source(void) const {
+    return al_get_display_event_source(disp);
+}
+
 void win::title(const char* text) {
     al_set_window_title(disp, text);
 }

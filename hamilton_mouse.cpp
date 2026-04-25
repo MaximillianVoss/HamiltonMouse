@@ -1,7 +1,10 @@
 #include <iostream>
 #include <cmath>
-#include "matrix.h" 
-#include "win.h"   
+#ifdef _WIN32
+#include <windows.h>
+#endif
+#include "matrix.h"
+#include "win.h"
 
 using namespace std;
 
@@ -21,8 +24,9 @@ matrix systemB(double t, const matrix& X) {
     matrix R(2);
     const double x = X(0);
     const double y = X(1);
-    //dx / dt = x ^ 2 + y ^ 2 - 2x
-    //dy / dt = 3x ^ 2 - x + 3y
+
+    // dx/dt = x^2 + y^2 - 2x
+    // dy/dt = 3x^2 - x + 3y
     R(0) = x * x + y * y - 2 * x;
     R(1) = 3 * x * x - x + 3 * y;
     return R;
@@ -37,14 +41,14 @@ Linearization2D linearizeSystemBAtZero() {
     L.a12 = 0;
     L.a21 = -1;
     L.a22 = 3;
-    //Trace / след матрицы 
-    //—лед Ч это сумма элементов главной диагонали
+
+    // Trace is the sum of the main diagonal.
     L.trace = L.a11 + L.a22;
-    //Determinant / определитель
+    // Determinant for a 2x2 matrix.
     L.determinant = L.a11 * L.a22 - L.a12 * L.a21;
-    //Discriminant / дискриминант
+    // Discriminant of lambda^2 - trace*lambda + determinant = 0.
     L.discriminant = L.trace * L.trace - 4 * L.determinant;
-    //—обственные значени€ матрицы 2x2
+    // Eigenvalues of the 2x2 matrix.
     L.lambda1 = (L.trace - sqrt(L.discriminant)) / 2;
     L.lambda2 = (L.trace + sqrt(L.discriminant)) / 2;
     return L;
@@ -78,13 +82,23 @@ void printSystemBAnalysis() {
     cout << "2) small window: x(t)" << endl;
     cout << "3) small window: y(t)" << endl << endl;
     cout << "Click in the large window to choose the initial point." << endl;
+    cout << "Press Esc or close any window to exit." << endl;
 }
 
 int main(int argc, char** argv) {
+#ifdef _WIN32
+    HANDLE appMutex = CreateMutexA(nullptr, TRUE, "HamiltonMouseSingleInstance");
+    if (appMutex && GetLastError() == ERROR_ALREADY_EXISTS) {
+        cout << "HamiltonMouse is already running." << endl;
+        return 0;
+    }
+#endif
+
     printSystemBAnalysis();
 
     initdraw();
     al_install_mouse();
+    al_install_keyboard();
 
     const int smallWidth = 250;
     const int smallHeight = 250;
@@ -121,19 +135,29 @@ int main(int argc, char** argv) {
 
     ALLEGRO_EVENT_QUEUE* queue = al_create_event_queue();
     al_register_event_source(queue, al_get_mouse_event_source());
+    al_register_event_source(queue, al_get_keyboard_event_source());
+    al_register_event_source(queue, w.event_source());
+    al_register_event_source(queue, w1.event_source());
+    al_register_event_source(queue, w2.event_source());
 
     matrix Y(2);
     bool running = true;
     while (running) {
         ALLEGRO_EVENT ev;
-        
         al_wait_for_event(queue, &ev);
 
-            if (ev.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN) {
+        if (ev.type == ALLEGRO_EVENT_DISPLAY_CLOSE) {
+            running = false;
+        }
+        else if (ev.type == ALLEGRO_EVENT_KEY_DOWN && ev.keyboard.keycode == ALLEGRO_KEY_ESCAPE) {
+            running = false;
+        }
+        else if (ev.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN && ev.mouse.display == w.display()) {
             double mx, my, t = 0, h = 0.001;
             w.inv_scale(ev.mouse.x, ev.mouse.y, mx, my);
-    
-            Y(0) = mx; Y(1) = my;
+
+            Y(0) = mx;
+            Y(1) = my;
 
             cout << "Initial point: x=" << Y(0) << ", y=" << Y(1) << endl;
 
@@ -150,6 +174,13 @@ int main(int argc, char** argv) {
             w2.flip();
         }
     }
+
     al_destroy_event_queue(queue);
+#ifdef _WIN32
+    if (appMutex) {
+        ReleaseMutex(appMutex);
+        CloseHandle(appMutex);
+    }
+#endif
     return 0;
 }
