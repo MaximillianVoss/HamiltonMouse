@@ -1,0 +1,7 @@
+{
+  "name": "hamilton-mouse",
+  "version-string": "0.1.0",
+  "dependencies": [
+    "allegro5"
+  ]
+}
