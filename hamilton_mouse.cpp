@@ -80,9 +80,25 @@ int main(int argc, char** argv) {
 
     initdraw();
     al_install_mouse();
-    win w(500, 500);
-    win w1(250, 250);
-    win w2(250, 250);
+
+    const int smallWidth = 250;
+    const int smallHeight = 250;
+    const int mainWidth = 500;
+    const int mainHeight = smallHeight * 2;
+    const int margin = 8;
+
+    win w1(smallWidth, smallHeight);
+    win w2(smallWidth, smallHeight);
+    win w(mainWidth, mainHeight);
+
+    w1.title("x(t) for system 1.10 b");
+    w2.title("y(t) for system 1.10 b");
+    w.title("Phase portrait (x,y), system 1.10 b");
+
+    w1.position(margin, margin);
+    w2.position(margin, margin + smallHeight);
+    w.position(margin + smallWidth, margin);
+
     w.scale(-4, 4, -4, 4);
     w1.scale(0, 5, -4, 4);
     w2.scale(0, 5, -4, 4);

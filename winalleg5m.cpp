@@ -31,6 +31,14 @@ win::~win(void) {
     if (disp) al_destroy_display(disp);
 }
 
+void win::title(const char* text) {
+    al_set_window_title(disp, text);
+}
+
+void win::position(int x, int y) {
+    al_set_window_position(disp, x, y);
+}
+
 void win::scale(double amin, double amax, double omin, double omax) {
     abs.min = amin; ord.min = omin;
     abs.max = amax; ord.max = omax;

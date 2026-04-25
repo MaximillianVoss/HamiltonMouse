@@ -19,6 +19,8 @@ class win {
 public:
     win(int asize, int osize);
     ~win(void);
+    void title(const char* text);
+    void position(int x, int y);
     void clear(void);
     void flip(void);
     void scale(double amin, double amax, double omin, double omax);
