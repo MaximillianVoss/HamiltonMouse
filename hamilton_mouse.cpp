@@ -135,8 +135,11 @@ void drawPhasePortrait(win& w, bool showLabels, PhaseMode mode) {
 void redrawPhaseCanvas(win& w, const vector<Trajectory>& trajectories, bool showLabels, PhaseMode mode) {
     w.clear();
     for (const Trajectory& trajectory : trajectories) {
-        for (const StationaryPoint& point : trajectory) {
-            w.point(point.x, point.y);
+        if (trajectory.size() == 1) {
+            w.point(trajectory[0].x, trajectory[0].y);
+        }
+        for (size_t i = 1; i < trajectory.size(); ++i) {
+            w.line(trajectory[i - 1].x, trajectory[i - 1].y, trajectory[i].x, trajectory[i].y);
         }
     }
     drawPhasePortrait(w, showLabels, mode);
@@ -387,7 +390,6 @@ int main(int argc, char** argv) {
             while (t < 5.0 && fabs(Y(0)) < 4.0 && fabs(Y(1)) < 4.0) {
                 rk(Y, t, h, rhs);
                 trajectory.push_back({ Y(0), Y(1) });
-                w.point(Y(0), Y(1));
                 w1.point(t, Y(0));
                 w2.point(t, Y(1));
             }

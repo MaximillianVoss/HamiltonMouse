@@ -35,6 +35,7 @@ public:
     void zoom_at(int px, int py, double factor);
     void inv_scale(int px, int py, double& a, double& o); 
     void point(double a, double o);
+    void line(double a1, double o1, double a2, double o2);
     void lineto(double a, double o);
     void plot(matrix& a, matrix& o); // plot o(:,i) vs a(:,1) for each i
     void dotplot(bool dm(matrix&, int, int), matrix&);

@@ -131,6 +131,15 @@ void win::point(double a, double o) {
     al_put_pixel(absp, ordp, al_map_rgb(0, 0, 0));
 }
 
+void win::line(double a1, double o1, double a2, double o2) {
+    al_set_target_bitmap(canvas);
+    const int x1 = a1 / abs.d + abs.zero;
+    const int y1 = ord.zero - o1 / ord.d;
+    const int x2 = a2 / abs.d + abs.zero;
+    const int y2 = ord.zero - o2 / ord.d;
+    al_draw_line(x1, y1, x2, y2, al_map_rgb(0, 0, 0), 1);
+}
+
 void win::lineto(double a, double o) {
     al_set_target_bitmap(canvas);
     int absp = a / abs.d + abs.zero;
