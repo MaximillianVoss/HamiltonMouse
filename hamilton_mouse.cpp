@@ -39,6 +39,8 @@ enum class PhaseMode {
     LinearP2
 };
 
+using Trajectory = vector<StationaryPoint>;
+
 matrix systemB(double t, const matrix& X) {
     matrix R(2);
     const double x = X(0);
@@ -130,6 +132,16 @@ void drawPhasePortrait(win& w, bool showLabels, PhaseMode mode) {
     w.present();
 }
 
+void redrawPhaseCanvas(win& w, const vector<Trajectory>& trajectories, bool showLabels, PhaseMode mode) {
+    w.clear();
+    for (const Trajectory& trajectory : trajectories) {
+        for (const StationaryPoint& point : trajectory) {
+            w.point(point.x, point.y);
+        }
+    }
+    drawPhasePortrait(w, showLabels, mode);
+}
+
 matrix linearizedSystemAt(double t, const matrix& X, const StationaryPoint& point) {
     const Linearization2D L = linearizeSystemBAt(point);
     matrix R(2);
@@ -160,9 +172,9 @@ RHS rhsForMode(PhaseMode mode) {
     }
 }
 
-void resetPlots(win& w, win& w1, win& w2, bool showLabels, PhaseMode mode) {
-    w.clear();
-    drawPhasePortrait(w, showLabels, mode);
+void resetPlots(win& w, win& w1, win& w2, vector<Trajectory>& trajectories, bool showLabels, PhaseMode mode) {
+    trajectories.clear();
+    redrawPhaseCanvas(w, trajectories, showLabels, mode);
     w1.clear();
     w1.flip();
     w2.clear();
@@ -254,6 +266,8 @@ void printSystemBAnalysis() {
     cout << "Press 1 for nonlinear system portrait." << endl;
     cout << "Press 2 for linearized portrait near P1." << endl;
     cout << "Press 3 for linearized portrait near P2." << endl;
+    cout << "Mouse wheel zooms the phase portrait." << endl;
+    cout << "Hold the middle mouse button to pan the phase portrait." << endl;
 }
 
 int main(int argc, char** argv) {
@@ -300,7 +314,8 @@ int main(int argc, char** argv) {
     w2.scale(0, 5, -4, 4);
     bool showLabels = true;
     PhaseMode mode = PhaseMode::Nonlinear;
-    resetPlots(w, w1, w2, showLabels, mode);
+    vector<Trajectory> trajectories;
+    resetPlots(w, w1, w2, trajectories, showLabels, mode);
 
     ALLEGRO_EVENT_QUEUE* queue = al_create_event_queue();
     al_register_event_source(queue, al_get_mouse_event_source());
@@ -311,6 +326,7 @@ int main(int argc, char** argv) {
 
     matrix Y(2);
     bool running = true;
+    bool panning = false;
     while (running) {
         ALLEGRO_EVENT ev;
         al_wait_for_event(queue, &ev);
@@ -323,43 +339,62 @@ int main(int argc, char** argv) {
         }
         else if (ev.type == ALLEGRO_EVENT_KEY_DOWN && ev.keyboard.keycode == ALLEGRO_KEY_H) {
             showLabels = !showLabels;
-            drawPhasePortrait(w, showLabels, mode);
+            redrawPhaseCanvas(w, trajectories, showLabels, mode);
             cout << "Stationary point labels: " << (showLabels ? "shown" : "hidden") << endl;
         }
         else if (ev.type == ALLEGRO_EVENT_KEY_DOWN && ev.keyboard.keycode == ALLEGRO_KEY_1) {
             mode = PhaseMode::Nonlinear;
-            resetPlots(w, w1, w2, showLabels, mode);
+            resetPlots(w, w1, w2, trajectories, showLabels, mode);
             cout << modeTitle(mode) << endl;
         }
         else if (ev.type == ALLEGRO_EVENT_KEY_DOWN && ev.keyboard.keycode == ALLEGRO_KEY_2) {
             mode = PhaseMode::LinearP1;
-            resetPlots(w, w1, w2, showLabels, mode);
+            resetPlots(w, w1, w2, trajectories, showLabels, mode);
             cout << modeTitle(mode) << endl;
         }
         else if (ev.type == ALLEGRO_EVENT_KEY_DOWN && ev.keyboard.keycode == ALLEGRO_KEY_3) {
             mode = PhaseMode::LinearP2;
-            resetPlots(w, w1, w2, showLabels, mode);
+            resetPlots(w, w1, w2, trajectories, showLabels, mode);
             cout << modeTitle(mode) << endl;
         }
-        else if (ev.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN && ev.mouse.display == w.display()) {
+        else if (ev.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN && ev.mouse.display == w.display() && ev.mouse.button == 3) {
+            panning = true;
+        }
+        else if (ev.type == ALLEGRO_EVENT_MOUSE_BUTTON_UP && ev.mouse.button == 3) {
+            panning = false;
+        }
+        else if (ev.type == ALLEGRO_EVENT_MOUSE_AXES && ev.mouse.display == w.display() && ev.mouse.dz != 0) {
+            const double zoomFactor = pow(0.85, ev.mouse.dz);
+            w.zoom_at(ev.mouse.x, ev.mouse.y, zoomFactor);
+            redrawPhaseCanvas(w, trajectories, showLabels, mode);
+        }
+        else if (ev.type == ALLEGRO_EVENT_MOUSE_AXES && ev.mouse.display == w.display() && panning) {
+            w.pan_pixels(ev.mouse.dx, ev.mouse.dy);
+            redrawPhaseCanvas(w, trajectories, showLabels, mode);
+        }
+        else if (ev.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN && ev.mouse.display == w.display() && ev.mouse.button == 1) {
             double mx, my, t = 0, h = 0.001;
             RHS rhs = rhsForMode(mode);
             w.inv_scale(ev.mouse.x, ev.mouse.y, mx, my);
 
             Y(0) = mx;
             Y(1) = my;
+            Trajectory trajectory;
+            trajectory.push_back({ Y(0), Y(1) });
 
             cout << "Initial point: x=" << Y(0) << ", y=" << Y(1) << endl;
 
             while (t < 5.0 && fabs(Y(0)) < 4.0 && fabs(Y(1)) < 4.0) {
                 rk(Y, t, h, rhs);
+                trajectory.push_back({ Y(0), Y(1) });
                 w.point(Y(0), Y(1));
                 w1.point(t, Y(0));
                 w2.point(t, Y(1));
             }
 
+            trajectories.push_back(trajectory);
             cout << "Final point: x=" << Y(0) << ", y=" << Y(1) << ", t=" << t << endl;
-            drawPhasePortrait(w, showLabels, mode);
+            redrawPhaseCanvas(w, trajectories, showLabels, mode);
             w1.flip();
             w2.flip();
         }

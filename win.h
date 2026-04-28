@@ -31,6 +31,8 @@ public:
     void overlay_cross(double a, double o, double size, int r, int g, int b);
     void overlay_text(double a, double o, const char* text, int r, int g, int b);
     void scale(double amin, double amax, double omin, double omax);
+    void pan_pixels(int dx, int dy);
+    void zoom_at(int px, int py, double factor);
     void inv_scale(int px, int py, double& a, double& o); 
     void point(double a, double o);
     void lineto(double a, double o);

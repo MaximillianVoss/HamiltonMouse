@@ -60,6 +60,28 @@ void win::scale(double amin, double amax, double omin, double omax) {
     ord.zero = ord.size + omin / ord.d;
 }
 
+void win::pan_pixels(int dx, int dy) {
+    const double da = dx * abs.d;
+    const double dord = dy * ord.d;
+    scale(abs.min - da, abs.max - da, ord.min + dord, ord.max + dord);
+}
+
+void win::zoom_at(int px, int py, double factor) {
+    double a, o;
+    inv_scale(px, py, a, o);
+
+    const double width = (abs.max - abs.min) * factor;
+    const double height = (ord.max - ord.min) * factor;
+    const double xRatio = static_cast<double>(px) / abs.size;
+    const double yRatio = static_cast<double>(py) / ord.size;
+
+    const double amin = a - xRatio * width;
+    const double amax = amin + width;
+    const double omax = o + yRatio * height;
+    const double omin = omax - height;
+    scale(amin, amax, omin, omax);
+}
+
 // Очистка теперь красит именно холст
 void win::clear(void) {
     al_set_target_bitmap(canvas);
