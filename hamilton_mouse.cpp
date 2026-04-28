@@ -2,6 +2,8 @@
 #include <cmath>
 #include <vector>
 #include <string>
+#include <sstream>
+#include <iomanip>
 #ifdef _WIN32
 #include <windows.h>
 #endif
@@ -83,13 +85,26 @@ string classifyLinearization(double trace, double determinant, double discrimina
     return "degenerate case, needs additional analysis";
 }
 
-void markPoint(win& w, double x, double y) {
-    const double d = 0.04;
-    w.point(x, y);
-    w.point(x - d, y);
-    w.point(x + d, y);
-    w.point(x, y - d);
-    w.point(x, y + d);
+string pointLabel(const StationaryPoint& point, int index) {
+    ostringstream out;
+    out << fixed << setprecision(3);
+    out << "P" << index << " (" << point.x << ", " << point.y << ")";
+    return out.str();
+}
+
+void drawPhasePortrait(win& w, bool showLabels) {
+    const vector<StationaryPoint> points = stationaryPointsSystemB();
+
+    w.draw_canvas();
+    for (int i = 0; i < static_cast<int>(points.size()); ++i) {
+        const StationaryPoint& point = points[i];
+        w.overlay_cross(point.x, point.y, 6, 220, 0, 0);
+        if (showLabels) {
+            const string label = pointLabel(point, i + 1);
+            w.overlay_text(point.x, point.y, label.c_str(), 180, 0, 0);
+        }
+    }
+    w.present();
 }
 
 Linearization2D linearizeSystemBAt(const StationaryPoint& point) {
@@ -173,6 +188,7 @@ void printSystemBAnalysis() {
     cout << "3) small window: y(t)" << endl << endl;
     cout << "Click in the large window to choose the initial point." << endl;
     cout << "Press Esc or close any window to exit." << endl;
+    cout << "Press H to hide/show stationary point labels." << endl;
 }
 
 int main(int argc, char** argv) {
@@ -218,10 +234,8 @@ int main(int argc, char** argv) {
     w1.scale(0, 5, -4, 4);
     w2.scale(0, 5, -4, 4);
     w.clear();
-    for (const StationaryPoint& point : stationaryPointsSystemB()) {
-        markPoint(w, point.x, point.y);
-    }
-    w.flip();
+    bool showLabels = true;
+    drawPhasePortrait(w, showLabels);
     w1.clear();
     w1.flip();
     w2.clear();
@@ -246,6 +260,11 @@ int main(int argc, char** argv) {
         else if (ev.type == ALLEGRO_EVENT_KEY_DOWN && ev.keyboard.keycode == ALLEGRO_KEY_ESCAPE) {
             running = false;
         }
+        else if (ev.type == ALLEGRO_EVENT_KEY_DOWN && ev.keyboard.keycode == ALLEGRO_KEY_H) {
+            showLabels = !showLabels;
+            drawPhasePortrait(w, showLabels);
+            cout << "Stationary point labels: " << (showLabels ? "shown" : "hidden") << endl;
+        }
         else if (ev.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN && ev.mouse.display == w.display()) {
             double mx, my, t = 0, h = 0.001;
             w.inv_scale(ev.mouse.x, ev.mouse.y, mx, my);
@@ -263,7 +282,7 @@ int main(int argc, char** argv) {
             }
 
             cout << "Final point: x=" << Y(0) << ", y=" << Y(1) << ", t=" << t << endl;
-            w.flip();
+            drawPhasePortrait(w, showLabels);
             w1.flip();
             w2.flip();
         }

@@ -6,9 +6,13 @@
 #include <cassert>
 #include "win.h"
 
+static ALLEGRO_FONT* defaultFont = nullptr;
+
 void initdraw(void) {
     al_init();
     al_init_primitives_addon();
+    al_init_font_addon();
+    defaultFont = al_create_builtin_font();
 }
 
 // Конструктор: создаем окно и холст
@@ -64,9 +68,36 @@ void win::clear(void) {
 
 // Главная магия: переносим холст в окно и показываем
 void win::flip(void) {
-    al_set_target_backbuffer(disp);  // Цель — окно
-    al_draw_bitmap(canvas, 0, 0, 0); // Рисуем наш накопленный холст
-    al_flip_display();               // Выводим на экран
+    draw_canvas();
+    present();
+}
+
+void win::draw_canvas(void) {
+    al_set_target_backbuffer(disp);
+    al_draw_bitmap(canvas, 0, 0, 0);
+}
+
+void win::present(void) {
+    al_flip_display();
+}
+
+void win::overlay_cross(double a, double o, double size, int r, int g, int b) {
+    al_set_target_backbuffer(disp);
+    const int x = a / abs.d + abs.zero;
+    const int y = ord.zero - o / ord.d;
+    const int d = static_cast<int>(size);
+    const ALLEGRO_COLOR color = al_map_rgb(r, g, b);
+    al_draw_line(x - d, y, x + d, y, color, 2);
+    al_draw_line(x, y - d, x, y + d, color, 2);
+}
+
+void win::overlay_text(double a, double o, const char* text, int r, int g, int b) {
+    if (!defaultFont) return;
+
+    al_set_target_backbuffer(disp);
+    const int x = a / abs.d + abs.zero;
+    const int y = ord.zero - o / ord.d;
+    al_draw_text(defaultFont, al_map_rgb(r, g, b), x + 8, y - 8, 0, text);
 }
 
 // Рисование точки на холст

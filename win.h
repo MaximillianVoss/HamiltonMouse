@@ -4,6 +4,7 @@
 */
 #include <allegro5/allegro.h>
 #include <allegro5/allegro_primitives.h>
+#include <allegro5/allegro_font.h>
 
 #include "matrix.h"
 
@@ -25,6 +26,10 @@ public:
     void position(int x, int y);
     void clear(void);
     void flip(void);
+    void draw_canvas(void);
+    void present(void);
+    void overlay_cross(double a, double o, double size, int r, int g, int b);
+    void overlay_text(double a, double o, const char* text, int r, int g, int b);
     void scale(double amin, double amax, double omin, double omax);
     void inv_scale(int px, int py, double& a, double& o); 
     void point(double a, double o);
