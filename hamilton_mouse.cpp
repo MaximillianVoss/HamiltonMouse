@@ -33,6 +33,12 @@ struct Linearization2D {
     string stabilityType;
 };
 
+enum class PhaseMode {
+    Nonlinear,
+    LinearP1,
+    LinearP2
+};
+
 matrix systemB(double t, const matrix& X) {
     matrix R(2);
     const double x = X(0);
@@ -61,6 +67,8 @@ vector<StationaryPoint> stationaryPointsSystemB() {
     return points;
 }
 
+Linearization2D linearizeSystemBAt(const StationaryPoint& point);
+
 string classifyLinearization(double trace, double determinant, double discriminant) {
     const double eps = 1e-9;
 
@@ -86,16 +94,31 @@ string classifyLinearization(double trace, double determinant, double discrimina
 }
 
 string pointLabel(const StationaryPoint& point, int index) {
+    const Linearization2D L = linearizeSystemBAt(point);
     ostringstream out;
     out << fixed << setprecision(3);
-    out << "P" << index << " (" << point.x << ", " << point.y << ")";
+    out << "P" << index << " " << L.stabilityType;
+    out << " (" << point.x << ", " << point.y << ")";
     return out.str();
 }
 
-void drawPhasePortrait(win& w, bool showLabels) {
+string modeTitle(PhaseMode mode) {
+    switch (mode) {
+    case PhaseMode::LinearP1:
+        return "Mode 2: linearized near P1";
+    case PhaseMode::LinearP2:
+        return "Mode 3: linearized near P2";
+    default:
+        return "Mode 1: nonlinear system";
+    }
+}
+
+void drawPhasePortrait(win& w, bool showLabels, PhaseMode mode) {
     const vector<StationaryPoint> points = stationaryPointsSystemB();
 
     w.draw_canvas();
+    const string title = modeTitle(mode);
+    w.overlay_text(-3.9, 3.8, title.c_str(), 0, 0, 160);
     for (int i = 0; i < static_cast<int>(points.size()); ++i) {
         const StationaryPoint& point = points[i];
         w.overlay_cross(point.x, point.y, 6, 220, 0, 0);
@@ -105,6 +128,45 @@ void drawPhasePortrait(win& w, bool showLabels) {
         }
     }
     w.present();
+}
+
+matrix linearizedSystemAt(double t, const matrix& X, const StationaryPoint& point) {
+    const Linearization2D L = linearizeSystemBAt(point);
+    matrix R(2);
+    const double dx = X(0) - point.x;
+    const double dy = X(1) - point.y;
+
+    R(0) = L.a11 * dx + L.a12 * dy;
+    R(1) = L.a21 * dx + L.a22 * dy;
+    return R;
+}
+
+matrix linearizedSystemP1(double t, const matrix& X) {
+    return linearizedSystemAt(t, X, stationaryPointsSystemB()[0]);
+}
+
+matrix linearizedSystemP2(double t, const matrix& X) {
+    return linearizedSystemAt(t, X, stationaryPointsSystemB()[1]);
+}
+
+RHS rhsForMode(PhaseMode mode) {
+    switch (mode) {
+    case PhaseMode::LinearP1:
+        return linearizedSystemP1;
+    case PhaseMode::LinearP2:
+        return linearizedSystemP2;
+    default:
+        return systemB;
+    }
+}
+
+void resetPlots(win& w, win& w1, win& w2, bool showLabels, PhaseMode mode) {
+    w.clear();
+    drawPhasePortrait(w, showLabels, mode);
+    w1.clear();
+    w1.flip();
+    w2.clear();
+    w2.flip();
 }
 
 Linearization2D linearizeSystemBAt(const StationaryPoint& point) {
@@ -189,6 +251,9 @@ void printSystemBAnalysis() {
     cout << "Click in the large window to choose the initial point." << endl;
     cout << "Press Esc or close any window to exit." << endl;
     cout << "Press H to hide/show stationary point labels." << endl;
+    cout << "Press 1 for nonlinear system portrait." << endl;
+    cout << "Press 2 for linearized portrait near P1." << endl;
+    cout << "Press 3 for linearized portrait near P2." << endl;
 }
 
 int main(int argc, char** argv) {
@@ -233,13 +298,9 @@ int main(int argc, char** argv) {
     w.scale(-4, 4, -4, 4);
     w1.scale(0, 5, -4, 4);
     w2.scale(0, 5, -4, 4);
-    w.clear();
     bool showLabels = true;
-    drawPhasePortrait(w, showLabels);
-    w1.clear();
-    w1.flip();
-    w2.clear();
-    w2.flip();
+    PhaseMode mode = PhaseMode::Nonlinear;
+    resetPlots(w, w1, w2, showLabels, mode);
 
     ALLEGRO_EVENT_QUEUE* queue = al_create_event_queue();
     al_register_event_source(queue, al_get_mouse_event_source());
@@ -262,11 +323,27 @@ int main(int argc, char** argv) {
         }
         else if (ev.type == ALLEGRO_EVENT_KEY_DOWN && ev.keyboard.keycode == ALLEGRO_KEY_H) {
             showLabels = !showLabels;
-            drawPhasePortrait(w, showLabels);
+            drawPhasePortrait(w, showLabels, mode);
             cout << "Stationary point labels: " << (showLabels ? "shown" : "hidden") << endl;
+        }
+        else if (ev.type == ALLEGRO_EVENT_KEY_DOWN && ev.keyboard.keycode == ALLEGRO_KEY_1) {
+            mode = PhaseMode::Nonlinear;
+            resetPlots(w, w1, w2, showLabels, mode);
+            cout << modeTitle(mode) << endl;
+        }
+        else if (ev.type == ALLEGRO_EVENT_KEY_DOWN && ev.keyboard.keycode == ALLEGRO_KEY_2) {
+            mode = PhaseMode::LinearP1;
+            resetPlots(w, w1, w2, showLabels, mode);
+            cout << modeTitle(mode) << endl;
+        }
+        else if (ev.type == ALLEGRO_EVENT_KEY_DOWN && ev.keyboard.keycode == ALLEGRO_KEY_3) {
+            mode = PhaseMode::LinearP2;
+            resetPlots(w, w1, w2, showLabels, mode);
+            cout << modeTitle(mode) << endl;
         }
         else if (ev.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN && ev.mouse.display == w.display()) {
             double mx, my, t = 0, h = 0.001;
+            RHS rhs = rhsForMode(mode);
             w.inv_scale(ev.mouse.x, ev.mouse.y, mx, my);
 
             Y(0) = mx;
@@ -275,14 +352,14 @@ int main(int argc, char** argv) {
             cout << "Initial point: x=" << Y(0) << ", y=" << Y(1) << endl;
 
             while (t < 5.0 && fabs(Y(0)) < 4.0 && fabs(Y(1)) < 4.0) {
-                rk(Y, t, h, systemB);
+                rk(Y, t, h, rhs);
                 w.point(Y(0), Y(1));
                 w1.point(t, Y(0));
                 w2.point(t, Y(1));
             }
 
             cout << "Final point: x=" << Y(0) << ", y=" << Y(1) << ", t=" << t << endl;
-            drawPhasePortrait(w, showLabels);
+            drawPhasePortrait(w, showLabels, mode);
             w1.flip();
             w2.flip();
         }
