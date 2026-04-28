@@ -155,6 +155,21 @@ bool canRedrawNow(double& lastRedrawTime) {
     return true;
 }
 
+void coalescePanEvents(ALLEGRO_EVENT_QUEUE* queue, ALLEGRO_DISPLAY* display, int& dx, int& dy) {
+    ALLEGRO_EVENT next;
+    while (al_peek_next_event(queue, &next)) {
+        if (next.type != ALLEGRO_EVENT_MOUSE_AXES ||
+            next.mouse.display != display ||
+            next.mouse.dz != 0) {
+            break;
+        }
+
+        al_drop_next_event(queue);
+        dx += next.mouse.dx;
+        dy += next.mouse.dy;
+    }
+}
+
 matrix linearizedSystemAt(double t, const matrix& X, const StationaryPoint& point) {
     const Linearization2D L = linearizeSystemBAt(point);
     matrix R(2);
@@ -385,7 +400,10 @@ int main(int argc, char** argv) {
             redrawPhaseCanvas(w, trajectories, showLabels, mode);
         }
         else if (ev.type == ALLEGRO_EVENT_MOUSE_AXES && ev.mouse.display == w.display() && panning) {
-            w.pan_pixels(ev.mouse.dx, ev.mouse.dy);
+            int dx = ev.mouse.dx;
+            int dy = ev.mouse.dy;
+            coalescePanEvents(queue, w.display(), dx, dy);
+            w.pan_pixels(dx, dy);
             if (canRedrawNow(lastPanRedrawTime)) {
                 redrawPhaseCanvas(w, trajectories, showLabels, mode);
             }
