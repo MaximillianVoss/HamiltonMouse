@@ -96,6 +96,7 @@ void win::flip(void) {
 
 void win::draw_canvas(void) {
     al_set_target_backbuffer(disp);
+    al_clear_to_color(al_map_rgb(255, 255, 255));
     al_draw_bitmap(canvas, 0, 0, 0);
 }
 
