@@ -1,5 +1,7 @@
 #include <iostream>
 #include <cmath>
+#include <vector>
+#include <string>
 #ifdef _WIN32
 #include <windows.h>
 #endif
@@ -8,7 +10,13 @@
 
 using namespace std;
 
+struct StationaryPoint {
+    double x;
+    double y;
+};
+
 struct Linearization2D {
+    StationaryPoint point;
     double a11;
     double a12;
     double a21;
@@ -18,6 +26,9 @@ struct Linearization2D {
     double discriminant;
     double lambda1;
     double lambda2;
+    double realPart;
+    double imaginaryPart;
+    string stabilityType;
 };
 
 matrix systemB(double t, const matrix& X) {
@@ -32,14 +43,64 @@ matrix systemB(double t, const matrix& X) {
     return R;
 }
 
-Linearization2D linearizeSystemBAtZero() {
+vector<StationaryPoint> stationaryPointsSystemB() {
+    vector<StationaryPoint> points;
+
+    points.push_back({ 0.0, 0.0 });
+
+    // From g(x,y)=0 we get y = x/3 - x^2.
+    // Substitution into f(x,y)=0 gives:
+    // x * (x^3 - 2/3*x^2 + 10/9*x - 2) = 0.
+    // The cubic has one real root near 1.173.
+    const double x = 1.17299672089847;
+    const double y = x / 3.0 - x * x;
+    points.push_back({ x, y });
+
+    return points;
+}
+
+string classifyLinearization(double trace, double determinant, double discriminant) {
+    const double eps = 1e-9;
+
+    if (determinant < -eps) {
+        return "saddle, unstable";
+    }
+    if (determinant > eps && trace < -eps && discriminant > eps) {
+        return "stable node";
+    }
+    if (determinant > eps && trace > eps && discriminant > eps) {
+        return "unstable node";
+    }
+    if (determinant > eps && trace < -eps && discriminant < -eps) {
+        return "stable focus";
+    }
+    if (determinant > eps && trace > eps && discriminant < -eps) {
+        return "unstable focus";
+    }
+    if (determinant > eps && fabs(trace) <= eps && discriminant < -eps) {
+        return "center in linear approximation";
+    }
+    return "degenerate case, needs additional analysis";
+}
+
+void markPoint(win& w, double x, double y) {
+    const double d = 0.04;
+    w.point(x, y);
+    w.point(x - d, y);
+    w.point(x + d, y);
+    w.point(x, y - d);
+    w.point(x, y + d);
+}
+
+Linearization2D linearizeSystemBAt(const StationaryPoint& point) {
     Linearization2D L;
 
     // J(x,y) = [ 2x - 2   2y ]
     //          [ 6x - 1    3 ]
-    L.a11 = -2;
-    L.a12 = 0;
-    L.a21 = -1;
+    L.point = point;
+    L.a11 = 2 * point.x - 2;
+    L.a12 = 2 * point.y;
+    L.a21 = 6 * point.x - 1;
     L.a22 = 3;
 
     // Trace is the sum of the main diagonal.
@@ -48,35 +109,64 @@ Linearization2D linearizeSystemBAtZero() {
     L.determinant = L.a11 * L.a22 - L.a12 * L.a21;
     // Discriminant of lambda^2 - trace*lambda + determinant = 0.
     L.discriminant = L.trace * L.trace - 4 * L.determinant;
-    // Eigenvalues of the 2x2 matrix.
-    L.lambda1 = (L.trace - sqrt(L.discriminant)) / 2;
-    L.lambda2 = (L.trace + sqrt(L.discriminant)) / 2;
+
+    if (L.discriminant >= 0) {
+        // Real eigenvalues of the 2x2 matrix.
+        L.lambda1 = (L.trace - sqrt(L.discriminant)) / 2;
+        L.lambda2 = (L.trace + sqrt(L.discriminant)) / 2;
+        L.realPart = 0;
+        L.imaginaryPart = 0;
+    }
+    else {
+        // Complex eigenvalues: trace/2 +- i*sqrt(-D)/2.
+        L.lambda1 = 0;
+        L.lambda2 = 0;
+        L.realPart = L.trace / 2;
+        L.imaginaryPart = sqrt(-L.discriminant) / 2;
+    }
+
+    L.stabilityType = classifyLinearization(L.trace, L.determinant, L.discriminant);
     return L;
 }
 
-void printSystemBAnalysis() {
-    const Linearization2D L = linearizeSystemBAtZero();
+void printLinearization(const Linearization2D& L, int index) {
+    cout << "Stationary point " << index << ": ";
+    cout << "x=" << L.point.x << ", y=" << L.point.y << endl;
+    cout << "Jacobian:" << endl;
+    cout << "[ " << L.a11 << "  " << L.a12 << " ]" << endl;
+    cout << "[ " << L.a21 << "   " << L.a22 << " ]" << endl;
+    cout << "trace = " << L.trace << endl;
+    cout << "determinant = " << L.determinant << endl;
+    cout << "discriminant = " << L.discriminant << endl;
 
+    if (L.discriminant >= 0) {
+        cout << "lambda1 = " << L.lambda1 << endl;
+        cout << "lambda2 = " << L.lambda2 << endl;
+    }
+    else {
+        cout << "lambda1 = " << L.realPart << " - " << L.imaginaryPart << "i" << endl;
+        cout << "lambda2 = " << L.realPart << " + " << L.imaginaryPart << "i" << endl;
+    }
+
+    cout << "Stability type: " << L.stabilityType << "." << endl << endl;
+}
+
+void printSystemBAnalysis() {
     cout << "Task 1.10 b" << endl;
     cout << "dx/dt = x^2 + y^2 - 2x" << endl;
     cout << "dy/dt = 3x^2 - x + 3y" << endl << endl;
 
-    cout << "The zero point is stationary: f(0,0)=0, g(0,0)=0." << endl;
-    cout << "Jacobian at (0,0):" << endl;
-    cout << "[ " << L.a11 << "  " << L.a12 << " ]" << endl;
-    cout << "[ " << L.a21 << "   " << L.a22 << " ]" << endl << endl;
+    cout << "Full analysis steps:" << endl;
+    cout << "1) stationary points" << endl;
+    cout << "2) linearization near each stationary point" << endl;
+    cout << "3) stability type" << endl;
+    cout << "4) phase portrait by Runge-Kutta trajectories" << endl << endl;
 
-    cout << "Linearized system:" << endl;
-    cout << "dx/dt = -2x" << endl;
-    cout << "dy/dt = -x + 3y" << endl << endl;
+    const vector<StationaryPoint> points = stationaryPointsSystemB();
+    for (int i = 0; i < static_cast<int>(points.size()); ++i) {
+        printLinearization(linearizeSystemBAt(points[i]), i + 1);
+    }
 
-    cout << "trace = " << L.trace << endl;
-    cout << "determinant = " << L.determinant << endl;
-    cout << "discriminant = " << L.discriminant << endl;
-    cout << "lambda1 = " << L.lambda1 << endl;
-    cout << "lambda2 = " << L.lambda2 << endl << endl;
-
-    cout << "Stability type: saddle, unstable." << endl << endl;
     cout << "Windows:" << endl;
     cout << "1) large window: phase trajectory (x,y)" << endl;
     cout << "2) small window: x(t)" << endl;
@@ -90,6 +180,7 @@ int main(int argc, char** argv) {
     HANDLE appMutex = CreateMutexA(nullptr, TRUE, "HamiltonMouseSingleInstance");
     if (appMutex && GetLastError() == ERROR_ALREADY_EXISTS) {
         cout << "HamiltonMouse is already running." << endl;
+        CloseHandle(appMutex);
         return 0;
     }
 #endif
@@ -127,6 +218,9 @@ int main(int argc, char** argv) {
     w1.scale(0, 5, -4, 4);
     w2.scale(0, 5, -4, 4);
     w.clear();
+    for (const StationaryPoint& point : stationaryPointsSystemB()) {
+        markPoint(w, point.x, point.y);
+    }
     w.flip();
     w1.clear();
     w1.flip();
@@ -161,7 +255,7 @@ int main(int argc, char** argv) {
 
             cout << "Initial point: x=" << Y(0) << ", y=" << Y(1) << endl;
 
-            while (t < 5.0 && abs(Y(0)) < 4.0 && abs(Y(1)) < 4.0) {
+            while (t < 5.0 && fabs(Y(0)) < 4.0 && fabs(Y(1)) < 4.0) {
                 rk(Y, t, h, systemB);
                 w.point(Y(0), Y(1));
                 w1.point(t, Y(0));
