@@ -145,6 +145,16 @@ void redrawPhaseCanvas(win& w, const vector<Trajectory>& trajectories, bool show
     drawPhasePortrait(w, showLabels, mode);
 }
 
+bool canRedrawNow(double& lastRedrawTime) {
+    const double now = al_get_time();
+    if (now - lastRedrawTime < 1.0 / 60.0) {
+        return false;
+    }
+
+    lastRedrawTime = now;
+    return true;
+}
+
 matrix linearizedSystemAt(double t, const matrix& X, const StationaryPoint& point) {
     const Linearization2D L = linearizeSystemBAt(point);
     matrix R(2);
@@ -330,6 +340,7 @@ int main(int argc, char** argv) {
     matrix Y(2);
     bool running = true;
     bool panning = false;
+    double lastPanRedrawTime = 0;
     while (running) {
         ALLEGRO_EVENT ev;
         al_wait_for_event(queue, &ev);
@@ -362,9 +373,11 @@ int main(int argc, char** argv) {
         }
         else if (ev.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN && ev.mouse.display == w.display() && ev.mouse.button == 3) {
             panning = true;
+            lastPanRedrawTime = 0;
         }
         else if (ev.type == ALLEGRO_EVENT_MOUSE_BUTTON_UP && ev.mouse.button == 3) {
             panning = false;
+            redrawPhaseCanvas(w, trajectories, showLabels, mode);
         }
         else if (ev.type == ALLEGRO_EVENT_MOUSE_AXES && ev.mouse.display == w.display() && ev.mouse.dz != 0) {
             const double zoomFactor = pow(0.85, ev.mouse.dz);
@@ -373,7 +386,9 @@ int main(int argc, char** argv) {
         }
         else if (ev.type == ALLEGRO_EVENT_MOUSE_AXES && ev.mouse.display == w.display() && panning) {
             w.pan_pixels(ev.mouse.dx, ev.mouse.dy);
-            redrawPhaseCanvas(w, trajectories, showLabels, mode);
+            if (canRedrawNow(lastPanRedrawTime)) {
+                redrawPhaseCanvas(w, trajectories, showLabels, mode);
+            }
         }
         else if (ev.type == ALLEGRO_EVENT_MOUSE_BUTTON_DOWN && ev.mouse.display == w.display() && ev.mouse.button == 1) {
             double mx, my, t = 0, h = 0.001;
@@ -387,12 +402,17 @@ int main(int argc, char** argv) {
 
             cout << "Initial point: x=" << Y(0) << ", y=" << Y(1) << endl;
 
+            int stepIndex = 0;
             while (t < 5.0 && fabs(Y(0)) < 4.0 && fabs(Y(1)) < 4.0) {
                 rk(Y, t, h, rhs);
-                trajectory.push_back({ Y(0), Y(1) });
+                ++stepIndex;
+                if (stepIndex % 4 == 0) {
+                    trajectory.push_back({ Y(0), Y(1) });
+                }
                 w1.point(t, Y(0));
                 w2.point(t, Y(1));
             }
+            trajectory.push_back({ Y(0), Y(1) });
 
             trajectories.push_back(trajectory);
             cout << "Final point: x=" << Y(0) << ", y=" << Y(1) << ", t=" << t << endl;
