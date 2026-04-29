@@ -169,6 +169,14 @@ Linearization2D linearizeSystemBAt(const StationaryPoint& point);
 
 /// <summary>
 /// Классифицирует двумерную линейную систему по следу, определителю и дискриминанту.
+/// Возвращаемые значения соответствуют русским типам:
+/// "saddle, unstable" - седло, неустойчиво;
+/// "stable node" - устойчивый узел;
+/// "unstable node" - неустойчивый узел;
+/// "stable focus" - устойчивый фокус;
+/// "unstable focus" - неустойчивый фокус;
+/// "center in linear approximation" - центр в линейном приближении;
+/// "degenerate case, needs additional analysis" - вырожденный случай, требуется дополнительный анализ.
 /// </summary>
 /// <param name="trace">След матрицы Якоби.</param>
 /// <param name="determinant">Определитель матрицы Якоби.</param>
