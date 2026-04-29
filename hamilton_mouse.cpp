@@ -95,11 +95,35 @@ string classifyLinearization(double trace, double determinant, double discrimina
     return "degenerate case, needs additional analysis";
 }
 
+string classifyLinearizationRu(double trace, double determinant, double discriminant) {
+    const double eps = 1e-9;
+
+    if (determinant < -eps) {
+        return u8"седло, неустойчиво";
+    }
+    if (determinant > eps && trace < -eps && discriminant > eps) {
+        return u8"устойчивый узел";
+    }
+    if (determinant > eps && trace > eps && discriminant > eps) {
+        return u8"неустойчивый узел";
+    }
+    if (determinant > eps && trace < -eps && discriminant < -eps) {
+        return u8"устойчивый фокус";
+    }
+    if (determinant > eps && trace > eps && discriminant < -eps) {
+        return u8"неустойчивый фокус";
+    }
+    if (determinant > eps && fabs(trace) <= eps && discriminant < -eps) {
+        return u8"центр в линейном приближении";
+    }
+    return u8"особый случай";
+}
+
 string pointLabel(const StationaryPoint& point, int index) {
     const Linearization2D L = linearizeSystemBAt(point);
     ostringstream out;
     out << fixed << setprecision(3);
-    out << "P" << index << " " << L.stabilityType;
+    out << "P" << index << " " << classifyLinearizationRu(L.trace, L.determinant, L.discriminant);
     out << " (" << point.x << ", " << point.y << ")";
     return out.str();
 }
@@ -107,11 +131,11 @@ string pointLabel(const StationaryPoint& point, int index) {
 string modeTitle(PhaseMode mode) {
     switch (mode) {
     case PhaseMode::LinearP1:
-        return "Mode 2: linearized near P1";
+        return u8"Режим 2: линеаризация около P1";
     case PhaseMode::LinearP2:
-        return "Mode 3: linearized near P2";
+        return u8"Режим 3: линеаризация около P2";
     default:
-        return "Mode 1: nonlinear system";
+        return u8"Режим 1: нелинейная система";
     }
 }
 

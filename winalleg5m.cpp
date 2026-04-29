@@ -12,7 +12,11 @@ void initdraw(void) {
     al_init();
     al_init_primitives_addon();
     al_init_font_addon();
-    defaultFont = al_create_builtin_font();
+    al_init_ttf_addon();
+    defaultFont = al_load_ttf_font("C:/Windows/Fonts/arial.ttf", 14, 0);
+    if (!defaultFont) {
+        defaultFont = al_create_builtin_font();
+    }
 }
 
 // Конструктор: создаем окно и холст
