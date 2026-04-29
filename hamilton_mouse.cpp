@@ -12,35 +12,122 @@
 
 using namespace std;
 
+/// <summary>
+/// Represents a point in the phase plane.
+/// </summary>
 struct StationaryPoint {
+    /// <summary>
+    /// X coordinate.
+    /// </summary>
     double x;
+
+    /// <summary>
+    /// Y coordinate.
+    /// </summary>
     double y;
 };
 
+/// <summary>
+/// Stores the result of linearizing a two-dimensional system near one stationary point.
+/// </summary>
 struct Linearization2D {
+    /// <summary>
+    /// Stationary point where the Jacobian is evaluated.
+    /// </summary>
     StationaryPoint point;
+
+    /// <summary>
+    /// First row, first column of the Jacobian matrix.
+    /// </summary>
     double a11;
+
+    /// <summary>
+    /// First row, second column of the Jacobian matrix.
+    /// </summary>
     double a12;
+
+    /// <summary>
+    /// Second row, first column of the Jacobian matrix.
+    /// </summary>
     double a21;
+
+    /// <summary>
+    /// Second row, second column of the Jacobian matrix.
+    /// </summary>
     double a22;
+
+    /// <summary>
+    /// Trace of the Jacobian matrix.
+    /// </summary>
     double trace;
+
+    /// <summary>
+    /// Determinant of the Jacobian matrix.
+    /// </summary>
     double determinant;
+
+    /// <summary>
+    /// Discriminant of the characteristic equation.
+    /// </summary>
     double discriminant;
+
+    /// <summary>
+    /// First real eigenvalue when eigenvalues are real.
+    /// </summary>
     double lambda1;
+
+    /// <summary>
+    /// Second real eigenvalue when eigenvalues are real.
+    /// </summary>
     double lambda2;
+
+    /// <summary>
+    /// Real part of complex conjugate eigenvalues.
+    /// </summary>
     double realPart;
+
+    /// <summary>
+    /// Positive imaginary part of complex conjugate eigenvalues.
+    /// </summary>
     double imaginaryPart;
+
+    /// <summary>
+    /// Human-readable stability classification.
+    /// </summary>
     string stabilityType;
 };
 
+/// <summary>
+/// Selects which system is drawn in the phase portrait window.
+/// </summary>
 enum class PhaseMode {
+    /// <summary>
+    /// Original nonlinear system.
+    /// </summary>
     Nonlinear,
+
+    /// <summary>
+    /// Linearized system near the first stationary point.
+    /// </summary>
     LinearP1,
+
+    /// <summary>
+    /// Linearized system near the second stationary point.
+    /// </summary>
     LinearP2
 };
 
+/// <summary>
+/// Sequence of phase-plane points forming one rendered trajectory.
+/// </summary>
 using Trajectory = vector<StationaryPoint>;
 
+/// <summary>
+/// Computes the right-hand side of system 1.10 b.
+/// </summary>
+/// <param name="t">Current integration time. The system is autonomous, so this value is unused.</param>
+/// <param name="X">State vector where X(0)=x and X(1)=y.</param>
+/// <returns>Derivative vector where result(0)=dx/dt and result(1)=dy/dt.</returns>
 matrix systemB(double t, const matrix& X) {
     matrix R(2);
     const double x = X(0);
@@ -53,6 +140,10 @@ matrix systemB(double t, const matrix& X) {
     return R;
 }
 
+/// <summary>
+/// Returns all real stationary points of system 1.10 b.
+/// </summary>
+/// <returns>List of stationary points in the phase plane.</returns>
 vector<StationaryPoint> stationaryPointsSystemB() {
     vector<StationaryPoint> points;
 
@@ -69,8 +160,20 @@ vector<StationaryPoint> stationaryPointsSystemB() {
     return points;
 }
 
+/// <summary>
+/// Linearizes system 1.10 b near the specified stationary point.
+/// </summary>
+/// <param name="point">Stationary point where the Jacobian is evaluated.</param>
+/// <returns>Jacobian, eigenvalue data, and stability classification.</returns>
 Linearization2D linearizeSystemBAt(const StationaryPoint& point);
 
+/// <summary>
+/// Classifies a two-dimensional linear system using trace, determinant, and discriminant.
+/// </summary>
+/// <param name="trace">Trace of the Jacobian matrix.</param>
+/// <param name="determinant">Determinant of the Jacobian matrix.</param>
+/// <param name="discriminant">Discriminant of the characteristic equation.</param>
+/// <returns>Text description of the stationary point stability type.</returns>
 string classifyLinearization(double trace, double determinant, double discriminant) {
     const double eps = 1e-9;
 
@@ -95,6 +198,12 @@ string classifyLinearization(double trace, double determinant, double discrimina
     return "degenerate case, needs additional analysis";
 }
 
+/// <summary>
+/// Builds a short label for a stationary point shown on the phase portrait.
+/// </summary>
+/// <param name="point">Stationary point to label.</param>
+/// <param name="index">One-based point index.</param>
+/// <returns>Label text with point name, stability type, and coordinates.</returns>
 string pointLabel(const StationaryPoint& point, int index) {
     const Linearization2D L = linearizeSystemBAt(point);
     ostringstream out;
@@ -104,6 +213,11 @@ string pointLabel(const StationaryPoint& point, int index) {
     return out.str();
 }
 
+/// <summary>
+/// Gets the overlay title for the current phase portrait mode.
+/// </summary>
+/// <param name="mode">Selected phase portrait mode.</param>
+/// <returns>Mode title text.</returns>
 string modeTitle(PhaseMode mode) {
     switch (mode) {
     case PhaseMode::LinearP1:
@@ -115,6 +229,12 @@ string modeTitle(PhaseMode mode) {
     }
 }
 
+/// <summary>
+/// Draws the current phase portrait canvas plus overlay labels and stationary point markers.
+/// </summary>
+/// <param name="w">Phase portrait window.</param>
+/// <param name="showLabels">Whether stationary point labels should be shown.</param>
+/// <param name="mode">Selected phase portrait mode.</param>
 void drawPhasePortrait(win& w, bool showLabels, PhaseMode mode) {
     const vector<StationaryPoint> points = stationaryPointsSystemB();
 
@@ -132,6 +252,13 @@ void drawPhasePortrait(win& w, bool showLabels, PhaseMode mode) {
     w.present();
 }
 
+/// <summary>
+/// Rebuilds the phase portrait canvas from stored trajectories and redraws overlays.
+/// </summary>
+/// <param name="w">Phase portrait window.</param>
+/// <param name="trajectories">Stored trajectories in mathematical coordinates.</param>
+/// <param name="showLabels">Whether stationary point labels should be shown.</param>
+/// <param name="mode">Selected phase portrait mode.</param>
 void redrawPhaseCanvas(win& w, const vector<Trajectory>& trajectories, bool showLabels, PhaseMode mode) {
     w.clear();
     for (const Trajectory& trajectory : trajectories) {
@@ -145,6 +272,11 @@ void redrawPhaseCanvas(win& w, const vector<Trajectory>& trajectories, bool show
     drawPhasePortrait(w, showLabels, mode);
 }
 
+/// <summary>
+/// Checks whether enough time has passed to redraw during interactive panning.
+/// </summary>
+/// <param name="lastRedrawTime">Last redraw timestamp; updated when redraw is allowed.</param>
+/// <returns>True when a redraw should be performed.</returns>
 bool canRedrawNow(double& lastRedrawTime) {
     const double now = al_get_time();
     if (now - lastRedrawTime < 1.0 / 60.0) {
@@ -155,6 +287,13 @@ bool canRedrawNow(double& lastRedrawTime) {
     return true;
 }
 
+/// <summary>
+/// Merges queued mouse movement events into one pan delta to avoid delayed panning.
+/// </summary>
+/// <param name="queue">Allegro event queue.</param>
+/// <param name="display">Display whose mouse events should be coalesced.</param>
+/// <param name="dx">Accumulated horizontal mouse delta in pixels.</param>
+/// <param name="dy">Accumulated vertical mouse delta in pixels.</param>
 void coalescePanEvents(ALLEGRO_EVENT_QUEUE* queue, ALLEGRO_DISPLAY* display, int& dx, int& dy) {
     ALLEGRO_EVENT next;
     while (al_peek_next_event(queue, &next)) {
@@ -170,6 +309,13 @@ void coalescePanEvents(ALLEGRO_EVENT_QUEUE* queue, ALLEGRO_DISPLAY* display, int
     }
 }
 
+/// <summary>
+/// Computes the right-hand side of the linearized system near a stationary point.
+/// </summary>
+/// <param name="t">Current integration time. The system is autonomous, so this value is unused.</param>
+/// <param name="X">Current state vector.</param>
+/// <param name="point">Stationary point used as the linearization center.</param>
+/// <returns>Derivative vector of the linearized system.</returns>
 matrix linearizedSystemAt(double t, const matrix& X, const StationaryPoint& point) {
     const Linearization2D L = linearizeSystemBAt(point);
     matrix R(2);
@@ -181,14 +327,31 @@ matrix linearizedSystemAt(double t, const matrix& X, const StationaryPoint& poin
     return R;
 }
 
+/// <summary>
+/// Computes the linearized system near P1.
+/// </summary>
+/// <param name="t">Current integration time.</param>
+/// <param name="X">Current state vector.</param>
+/// <returns>Derivative vector near P1.</returns>
 matrix linearizedSystemP1(double t, const matrix& X) {
     return linearizedSystemAt(t, X, stationaryPointsSystemB()[0]);
 }
 
+/// <summary>
+/// Computes the linearized system near P2.
+/// </summary>
+/// <param name="t">Current integration time.</param>
+/// <param name="X">Current state vector.</param>
+/// <returns>Derivative vector near P2.</returns>
 matrix linearizedSystemP2(double t, const matrix& X) {
     return linearizedSystemAt(t, X, stationaryPointsSystemB()[1]);
 }
 
+/// <summary>
+/// Selects the right-hand side function for the current phase portrait mode.
+/// </summary>
+/// <param name="mode">Selected phase portrait mode.</param>
+/// <returns>Function pointer compatible with the Runge-Kutta integrator.</returns>
 RHS rhsForMode(PhaseMode mode) {
     switch (mode) {
     case PhaseMode::LinearP1:
@@ -200,6 +363,15 @@ RHS rhsForMode(PhaseMode mode) {
     }
 }
 
+/// <summary>
+/// Clears all plots and redraws stationary point overlays for a new mode.
+/// </summary>
+/// <param name="w">Phase portrait window.</param>
+/// <param name="w1">x(t) graph window.</param>
+/// <param name="w2">y(t) graph window.</param>
+/// <param name="trajectories">Stored phase trajectories to clear.</param>
+/// <param name="showLabels">Whether stationary point labels should be shown.</param>
+/// <param name="mode">Selected phase portrait mode.</param>
 void resetPlots(win& w, win& w1, win& w2, vector<Trajectory>& trajectories, bool showLabels, PhaseMode mode) {
     trajectories.clear();
     redrawPhaseCanvas(w, trajectories, showLabels, mode);
@@ -209,6 +381,11 @@ void resetPlots(win& w, win& w1, win& w2, vector<Trajectory>& trajectories, bool
     w2.flip();
 }
 
+/// <summary>
+/// Linearizes system 1.10 b at the specified point and computes eigenvalue data.
+/// </summary>
+/// <param name="point">Stationary point where the Jacobian is evaluated.</param>
+/// <returns>Linearization data and stability classification.</returns>
 Linearization2D linearizeSystemBAt(const StationaryPoint& point) {
     Linearization2D L;
 
@@ -246,6 +423,11 @@ Linearization2D linearizeSystemBAt(const StationaryPoint& point) {
     return L;
 }
 
+/// <summary>
+/// Prints linearization data for one stationary point to the console.
+/// </summary>
+/// <param name="L">Linearization data.</param>
+/// <param name="index">One-based point index.</param>
 void printLinearization(const Linearization2D& L, int index) {
     cout << "Stationary point " << index << ": ";
     cout << "x=" << L.point.x << ", y=" << L.point.y << endl;
@@ -268,6 +450,9 @@ void printLinearization(const Linearization2D& L, int index) {
     cout << "Stability type: " << L.stabilityType << "." << endl << endl;
 }
 
+/// <summary>
+/// Prints the complete analytic summary for system 1.10 b and usage hints.
+/// </summary>
 void printSystemBAnalysis() {
     cout << "Task 1.10 b" << endl;
     cout << "dx/dt = x^2 + y^2 - 2x" << endl;
@@ -298,6 +483,12 @@ void printSystemBAnalysis() {
     cout << "Hold the middle mouse button to pan the phase portrait." << endl;
 }
 
+/// <summary>
+/// Application entry point. Initializes graphics, prints analysis, and runs the event loop.
+/// </summary>
+/// <param name="argc">Command-line argument count.</param>
+/// <param name="argv">Command-line argument values.</param>
+/// <returns>Process exit code.</returns>
 int main(int argc, char** argv) {
 #ifdef _WIN32
     HANDLE appMutex = CreateMutexA(nullptr, TRUE, "HamiltonMouseSingleInstance");
